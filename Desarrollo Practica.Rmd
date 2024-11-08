@@ -82,53 +82,59 @@ var.num <- which(var.clss %in% c("numeric","integer"))
 
 1.  **Análisis de sesgo en el origen de los clientes**
 
-    El gráfico muestra la proporción entre los clientes nacionales y aquellos de procedencia extranjera
+    -   **Interpretación del gráfico**
 
-    ```{r}
-    ggplot(as.data.frame(table(datos$foreign)), aes(x = Var1, y = Freq, fill = factor(Var1))) +
-      geom_bar(stat = "identity") +
-      scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
-      labs(x = "Categorías", y = "Frecuencias", fill = "Categorías") +
-      theme_minimal()
-    ```
+        El gráfico muestra la proporción entre los clientes nacionales y aquellos de procedencia extranjera
 
-    El desbalance resulta en más de un 95% de los registros representando clientes de procedencia extranjera. Si además se observa la relación entre esta variable y la variable objetivo:
+        ```{r}
+        ggplot(as.data.frame(table(datos$foreign)), aes(x = Var1, y = Freq, fill = factor(Var1))) +
+          geom_bar(stat = "identity") +
+          scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
+          labs(x = "Categorías", y = "Frecuencias", fill = "Categorías") +
+          theme_minimal()
+        ```
 
-    ```{r}
+        El desbalance resulta en más de un 95% de los registros representando clientes de procedencia extranjera. Si además se observa la relación entre esta variable y la variable objetivo:
 
-    ggplot(data = datos) +
-      geom_mosaic(aes(weight = 1, x = product(foreign), fill = y)) +
-      scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
-      labs(x = "Extranjero", y = "Frecuencia", fill = "Cumple Crédito") +
-      theme_minimal() +
-      ggtitle("Mosaic Plot of Foreign vs Y")
-    ```
+        ```{r}
 
-    La proporción observada a priori de mayor cantidad de clientes de origen nacional que cumplen el crédito con respecto a los extranjeros no puede tenerse en cuenta debido a la proporción notoriamente menor de los primeros. Esta variable no debería ser tomada en cuenta al analizar las causas de incumplimiento de créditos
+        ggplot(data = datos) +
+          geom_mosaic(aes(weight = 1, x = product(foreign), fill = y)) +
+          scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
+          labs(x = "Extranjero", y = "Frecuencia", fill = "Cumple Crédito") +
+          theme_minimal() +
+          ggtitle("Mosaic Plot of Foreign vs Y")
+        ```
+
+    -   **Interpretación de los resultados**
+
+        La proporción observada a priori de mayor cantidad de clientes de origen nacional que cumplen el crédito con respecto a los extranjeros no puede tenerse en cuenta debido a la proporción notoriamente menor de los primeros. Esta variable no debería ser tomada en cuenta al analizar las causas de incumplimiento de créditos
 
 2.  **Distribución de Edades según el Cumplimiento de Pago de Crédito**
 
-    El gráfico muestra la distribución de personas según su grupo de edad y su comportamiento con respecto al pago del crédito. Los grupos de edad se dividen en intervalos de 10 años, desde 18 hasta más de 55 años, y se clasifican a las personas en dos categorías: quienes cumplieron con el pago de crédito ("Sí") y quienes no lo hicieron ("No").
+    -   **Interpretación del gráfico**
 
-    ```{r}
+        El gráfico muestra la distribución de personas según su grupo de edad y su comportamiento con respecto al pago del crédito. Los grupos de edad se dividen en intervalos de 10 años, desde 18 hasta más de 55 años, y se clasifican a las personas en dos categorías: quienes cumplieron con el pago de crédito ("Sí") y quienes no lo hicieron ("No").
 
-    datos$age.group <- cut(
-      datos$age, 
-      breaks = c(0, 25, 35, 45, 55, 100), 
-      labels = c("Joven", "Adulto Joven", "Adulto", "Mediana Edad", "Mayor"))
+        ```{r}
 
-    ggplot(datos, aes(x = age.group, fill = y)) +
-      geom_bar(position = "dodge") +
-      labs(
-        title = "Distribución de Edades según el Pago de Crédito",
-        x = "Grupo de Edad",
-        y = "Cantidad de Personas",
-        fill = "Pago de Crédito"
-      ) +
-      scale_x_discrete(labels = c("18-25", "26-35", "36-45", "46-55", "56+")) +
-      scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
-      theme_minimal()
-    ```
+        datos$age.group <- cut(
+          datos$age, 
+          breaks = c(0, 25, 35, 45, 55, 100), 
+          labels = c("Joven", "Adulto Joven", "Adulto", "Mediana Edad", "Mayor"))
+
+        ggplot(datos, aes(x = age.group, fill = y)) +
+          geom_bar(position = "dodge") +
+          labs(
+            title = "Distribución de Edades según el Pago de Crédito",
+            x = "Grupo de Edad",
+            y = "Cantidad de Personas",
+            fill = "Pago de Crédito"
+          ) +
+          scale_x_discrete(labels = c("18-25", "26-35", "36-45", "46-55", "56+")) +
+          scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
+          theme_minimal()
+        ```
 
     -   **Interpretación los Resultados**:
 
@@ -144,57 +150,56 @@ var.num <- which(var.clss %in% c("numeric","integer"))
 
             La proporción de personas que cumplen o no con el crédito parece tener un comportamiento similar a aquel del grupo mayoritario. El aumento del grupo de edad trae una disminución de la cantidad de clientes con crédito contratado, aunque la inspección gráfica indica que la proporción se mantiene similar
 
-    -   Test de diferencia de proporciones
+        4.  **Test de diferencia de proporciones**
 
-        Se realiza un grupo de tests de proporción entre los grupos de edad definidos, con un intervalo de confianza del 95%.
+            Se realiza un grupo de tests de proporción entre los grupos de edad definidos, con un intervalo de confianza del 95%.
 
-        ```{r}
+            ```{r}
 
-        no.young <- datos[datos$age != "Joven", ]
-        cont.table <- table(no.young$age.group, no.young$y)
-        age.levels <- levels(factor(no.young$age.group))
+            cont.table <- table(datos$age.group, datos$y)
+            age.levels <- levels(factor(datos$age.group))
 
-        no.count <- cont.table[, 'no']
-        count.tots <- rowSums(cont.table)
+            no.count <- cont.table[, 'no']
+            count.tots <- rowSums(cont.table)
 
-        results <- data.frame(
-          test = character(),
-          conf.int = character(),
-          p.value = numeric(),
-          stringsAsFactors = FALSE
-        )
+            results <- data.frame(
+              test = character(),
+              conf.int = character(),
+              p.value = numeric(),
+              stringsAsFactors = FALSE
+            )
 
-        for (i in 1:(length(age.levels) - 1)) {
-          for (j in (i + 1):length((age.levels))) {
-             pair <- c(age.levels[i], age.levels[j])
-             counts <- no.count[pair]
-             totals <- count.tots[pair]
-             
-             result <- prop.test(counts, totals)
-             
-             int <- paste0(
-               "(", 
-               round(result$conf.int[1], 3), 
-               ", ", 
-               round(result$conf.int[2], 3), ")"
-             )
-            
-            # Add results to data frame
-            results <- rbind(results, data.frame(
-              test = paste(pair, collapse = " vs "),
-              conf.int = int,
-              p.value = round(result$p.value, 3)
-            ))
-          }
-        }
+            for (i in 1:(length(age.levels) - 1)) {
+              for (j in (i + 1):length((age.levels))) {
+                 pair <- c(age.levels[i], age.levels[j])
+                 counts <- no.count[pair]
+                 totals <- count.tots[pair]
+                 
+                 result <- prop.test(counts, totals)
+                 
+                 int <- paste0(
+                   "(", 
+                   round(result$conf.int[1], 3), 
+                   ", ", 
+                   round(result$conf.int[2], 3), ")"
+                 )
+                
+                # Add results to data frame
+                results <- rbind(results, data.frame(
+                  test = paste(pair, collapse = " vs "),
+                  conf.int = int,
+                  p.value = round(result$p.value, 3)
+                ))
+              }
+            }
 
-        kable(
-          results, 
-          caption = "Resultados de test de proporciones", 
-          col.names = c('Prueba', 'Intervalo de confianza', "p-Valor"))
-        ```
+            kable(
+              results, 
+              caption = "Resultados de test de proporciones", 
+              col.names = c('Prueba', 'Intervalo de confianza', "p-Valor"))
+            ```
 
-        Primeramente se observa que el p-valor para todos los casos que implican al grupo "Joven" se encuentra por debajo del umbral definido (0.05 para un 95% de confianza), que confirma la conclusión obtenida del análisis gráfico. De igual manera, los tests entre el resto de grupos supera el umbral, por lo que en consecuencia no se pueden determinar diferencias significativas entre la proporción de personas que no cumple el crédito entre los grupos de edad. Esto es acorde con la hipótesis planeada por inspección gráfica
+            Primeramente se observa que el p-valor para todos los casos que implican al grupo "Joven" se encuentra por debajo del umbral definido (0.05 para un 95% de confianza), que confirma la conclusión obtenida del análisis gráfico. De igual manera, los tests entre el resto de grupos supera el umbral, por lo que en consecuencia no se pueden determinar diferencias significativas entre la proporción de personas que no cumple el crédito entre los grupos de edad. Esto es acorde con la hipótesis planeada por inspección gráfica
 
 3.  **Análisis del Proposito de Credito según su Estado de Pago:**
 
@@ -202,23 +207,45 @@ var.num <- which(var.clss %in% c("numeric","integer"))
 
         En el grafico se evidencia la proporción del crédito en relación con el estado de pago (Yes or No). Este análisis proporciona una visión general del comportamiento de pago según el objetivo del crédito en especifico, lo cual permite identificar las diferencias entre las distintas categoras.
 
-    ![](images/clipboard-3396729324.png)
+        ```{r}
+        ggplot(datos, aes(x = purpose, fill = y)) +
+          geom_bar(position = "fill") +  # Proporciones relativas
+          labs(
+            title = "Distribución del Propósito del Crédito según Estado de Pago",
+            x = "Propósito del Crédito",
+            y = "Proporción",
+            fill = "Estado de Pago"
+          ) +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        ```
 
     -   **Interpretación de los Resultados**:
 
         -   **Proporciones Altas de Cumplimiento:**
 
-            -   En propositos cómo business, radio/television y car (used), la proporción de clientes que pagan su crédito es notablemente alta.
+            1.  Aquellos resultados con mayor proporción de créditos cumplidos no muestran una relación apreciable según su tipo.
 
-            -   La elevada proporción de pagos yes (Sí) en estas categorías sugiere que estos créditos suelen tener mayor confiabilidad, representando un menor riesgo para las entidades financieras.
+            2.  Aunque sugieran elevada proporción de pagos yes (Sí), las categorías por si solas no pueden indicar el nivel de certeza en que se va a cumplir un crédito.
 
         -   **Proporciones Altas de Incumplimiento:**
 
-            -   Se identifica que en los propositos repairs, education y furniture/equipment se presenta una proporción más alta del incumplimiento de los créditos en comparación con otros propósitos.
+            1.  Los propositos repairs y education presentan una proporción más alta del incumplimiento de los créditos en comparación con otros propósitos.
 
-            -   Esto nos podría indicar que los clientes que solicitan estos créditos para estos fines tienden a enfrentar mayores dificultades en lo que respecta al cumplimiento de los pagos.
+            2.  Se considera que la educación podría guardar relación con la edad de los clientes, debido a ser más comunes los préstamos para estudios de alto coste, como grados. Sin embargo, la distribución de cumplimiento de los créditos para educación demuestra lo contrario
 
-            -   Lo más probable es que estos proposito esten asociados a situaciones de emergencia (cómo las reparaciones) o inversiones de largo plazo (cómo la educación), donde el retorno financiero no es inmediato.
+                ```{r}
+
+                filtered_data <- datos[datos$purpose == 'education', ]
+
+                ggplot(filtered_data, aes(x = age, fill = y)) +
+                  geom_histogram(bins = 10, position = position_dodge(width = 2.5), color = "black") +
+                  labs(title = "Histogram of Age for Education Purpose by Response",
+                       x = "Age",
+                       y = "Count",
+                       fill = "Response") +
+                  theme_minimal()
+                ```
 
 4.  **Análisis del Número de Créditos Activos según Estado de Pago:**
 
@@ -226,28 +253,53 @@ var.num <- which(var.clss %in% c("numeric","integer"))
 
         El grafico muestra la relación entre el número de créditos activos con respecto al estado de pago (Yes para los clientes que pagaron y No para los que no lo hicieron). A traves de este análisis podremos observar e identificar cómo la cantidad créditos activos de un cliente puede afectar la probabilidad de cumplimientos con los pagos.
 
-        ![](images/clipboard-1140029365.png)
+        ```{r}
+        ggplot(datos, aes(x = as.factor(num.credits), fill = y)) +
+          geom_bar(position = "dodge") +
+          labs(
+            title = "Número de Créditos Activos según Estado de Pago",
+            x = "Número de Créditos Activos",
+            y = "Cantidad",
+            fill = "Estado de Pago"
+          ) +
+          theme_minimal()
+        ```
 
     -   **Interpretación de los Resultados**:
 
-        -   **Clientes con 1 Crédito Activo**:
+        Se observa una disminución paulativa (esperable) de la cantidad de clientes con créditos contratados según los últimos aumentan. Sin embargo, con respecto a la influencia de esto en el cumplimiento con el crédito, el análisis gráfico arroja que las proporciones de cumplimiento o no se mantienen uniformes entre las cantidades de créditos activos
 
-            -   Es el grupo más numeroso, lo cual nos indica que una gran parte de los clientes tienen solo un crédito activo.
+        -   Test de diferencia de proporciones
 
-            -   Hay una alta proporción de pagos cumplidos (yes/sí), lo que nos sugiere que los clientes que solicitan un solo crédito tiene más capacidad para manejar sus obligaciones financieras.
+            Se retoma el enfoque utilizado en las proporciones de cumplimientos entre grupos de edades: test estadísticos con un intervalo de confianza del 95% entre cada posibilidad. Debido a la poca cantidad de datos disponibles para los clientes con más de 2 créditos, estos son omitidos.
 
-            -   Estos clientes representa un menor riesgo para las entidades financieras.
+            ```{r}
 
-        -   **Clientes con 2 Crédito Activos:**
+            cont.table <- table(as.factor(datos$num.credits), datos$y)
 
-            -   Se evidencia una reducción en la cantidad de clientes con dos créditos activos.
+            pair <- c('1', '2')
 
-            -   Incremento leve en el incumplimiento, aunque la mayoría de los clientes siguen cumpliendo con sus obligaciones financiera, se observa un ligero aumento en la proporción de incumplimientos.
+            no.count <- cont.table[, 'no']
+            count.tots <- rowSums(cont.table)
 
-            -   Manejar dos créditos simultáneamente podría representar un desafio para algunos clientes, especialmente si sus ingresos no son suficientes para cubrir sus otras obligaciones financieras.
+            result <- prop.test(no.count[pair], count.tots[pair])
 
-        -   **Clientes con 3 Crédito Activos o más:**
+            results <- data.frame(
+              test = paste(paste(pair, collapse = " credit vs "), " credits"),
+              conf.int = paste0(
+                 "(", 
+                 round(result$conf.int[1], 3), 
+                 ", ", 
+                 round(result$conf.int[2], 3), ")"),
+                p.value = round(result$p.value, 3),
+                stringsAsFactors = FALSE
+            )
 
-            -   Menos cantidad de clientes, por lo que podemos concluir que a medida que aumenta el número de créditos activos, el tamaño del grupo disminuye considerablemente.
 
-            -   La acumulación de tres o más créditos activos, puede representar un carga financiera significativa para los clientes, lo que resulta en un aumento del incumplimiento de sus obligaciones financieras.
+            kable(
+              results, 
+              caption = "Resultados de test de proporciones", 
+              col.names = c('Prueba', 'Intervalo de confianza', "p-Valor"))
+            ```
+
+            El resultado del p-valor supera el umbral definido (0.05), por lo que, en corcondancia con la inspección visual, no se puede definir una relación directa entre el número de créditos activo y el cumplimiento del estudiado
