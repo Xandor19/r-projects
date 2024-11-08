@@ -1,6 +1,6 @@
 ---
 title: "Entregable_R4"
-author: "Andres R"
+author: "Andres R, Alejandro Tomé, David López"
 date: "2024-11-06"
 output:
   html_document:
@@ -21,7 +21,7 @@ library(ggmosaic)
 
 ```{r}
 
-datos <- read.table('bank0_train.txt',header=TRUE,sep=';',stringsAsFactors = TRUE)
+datos <- read.table('data/bank0_train.txt',header=TRUE,sep=';',stringsAsFactors = TRUE)
 ```
 
 Identificación de variables categóricas y numéricas
@@ -98,6 +98,7 @@ var.num <- which(var.clss %in% c("numeric","integer"))
 
     ggplot(data = datos) +
       geom_mosaic(aes(weight = 1, x = product(foreign), fill = y)) +
+      scale_fill_manual(values = c("yes" = "blue", "no" = "salmon")) +
       labs(x = "Extranjero", y = "Frecuencia", fill = "Cumple Crédito") +
       theme_minimal() +
       ggtitle("Mosaic Plot of Foreign vs Y")
