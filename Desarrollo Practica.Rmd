@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/Users/David Lopez/Desktop/Estadistica/Datos y Código-20241023")
 
 library(knitr)
 library(ggplot2)
@@ -21,7 +22,11 @@ library(ggmosaic)
 
 ```{r}
 
-datos <- read.table('data/bank0_train.txt',header=TRUE,sep=';',stringsAsFactors = TRUE)
+datos <- read.table('bank0_train.txt',header=TRUE,sep=';',stringsAsFactors = TRUE)
+```
+
+```{r}
+View(datos)
 ```
 
 Identificación de variables categóricas y numéricas
@@ -303,3 +308,212 @@ var.num <- which(var.clss %in% c("numeric","integer"))
             ```
 
             El resultado del p-valor supera el umbral definido (0.05), por lo que, en corcondancia con la inspección visual, no se puede definir una relación directa entre el número de créditos activo y el cumplimiento del estudiado
+```{r}
+
+```
+
+##1.2 **Modelo de regresion logistica**
+
+```{r}
+##--Densidad para las variables numericas
+var.num <- which(sapply(datos,class) %in% c("numeric","integer"))    # variables que son numericas
+for(vn in var.num) cdplot(datos$y~datos[,vn],main=names(datos)[vn],n=512)
+```
+```{r}
+
+```
+
+# **Se oberva que para el grafico credit.amo la relacion que se tiene es que los clientes con montos de creditos más bajos tienden a pagar y los que tienen creditos más grande no.**
+```{r}
+# Establecer categorias de referencia en variables categoricas
+  ############################################################
+  ##-- La instruccion relevel cambia la categoria de referencia en las variables categoricas
+  ##-- Se escoge la referencia no por criterios estadisticos, sino de interpretabilidad
+  datos$status <- relevel(datos$status,ref="no checking account")
+  datos$credit.hist <- relevel(datos$credit.hist,ref="no credits taken/all credits paid back duly")
+  datos$purpose <- relevel(datos$purpose,ref="others")
+  datos$savings <- relevel(datos$savings,ref="unknown/no savings account")
+  datos$employed.time <- relevel(datos$employed.time,ref="unemployed")
+  datos$status.sex <- relevel(datos$status.sex,ref="male:single")
+  datos$debtors <- relevel(datos$debtors,ref="none")
+  datos$property <- relevel(datos$property,ref="unknown/no property")
+  datos$installment2 <- relevel(datos$installment2,ref="none")
+  datos$housing <- relevel(datos$housing,ref="for free")
+  datos$job <- relevel(datos$job,ref="unskilled - resident")
+  datos$telephone <- relevel(datos$telephone,ref="none")
+  datos$foreign <- relevel(datos$foreign,ref="no")
+
+```
+# **La categoria para cada variable se asigna en opcion de lo que se considera la mas interpretable o relevate para el analisis**
+
+
+```{r}
+##-- Modelo completo
+mod.glm0 <- glm(y~.,datos,family=binomial)    # estimacion del modelo
+summary(mod.glm0) 
+
+```
+```{r}
+
+```
+
+## **Podemos extraer que:
+variables como -duration,purposecar, credit.amo entre otras tienen un nivel de significancia de p<0,05 lo cual nos indica que hay suficiente evidencia para rechazar la hipotesis nula y concluir que estas variables tienen un efecto significativo sobre el modelo**
+```{r}
+##-- Missings 
+apply(apply(datos,2,is.na),2,sum)             # cuantos missings tiene cada variable --> Step no se puede aplicar con missings
+```
+```{r}
+##-- Funcion step (requiere que no haya missings si ha de quitar una variable que tenga)
+mod.glm1 <- step(mod.glm0)
+summary(mod.glm1)
+```
+```{r}
+
+```
+```{r}
+##-- Importancia de las categorias/covariables segun su significacion estadistica
+install.packages('caret')
+library(caret)
+View(varImp(mod.glm1))
+```
+```{r}
+##-- Por inspeccion visual
+br <- quantile(fitted(mod.glm1),seq(0,1,0.1))                                # Se crean los puntos de corte para los intervalos (br) de las probabilidades predichas
+int <- cut(fitted(mod.glm1),br)                                              # Se crea una variable con el intervalo al que pertenece cada individuo
+obs <- tapply(mod.glm1$y,int,sum)                                            # Los pagos observados en cada intervalo
+exp <- tapply(fitted(mod.glm1),int,sum)                                      # Los pagos esperados en cada intervalo  
+plot(1:10+0.05,exp,type='h',xlab="Intervalos",ylab="Frecuencias",lwd=2)      # Grafico de los pagos esperados
+lines(1:10-0.05,obs,type='h',col=2,lwd=2)                                    # Se anyade los pagos observados
+legend("topleft",c("Pagan - esperados", "Pagan - observados"),lwd=2,col=1:2) # Se anyade una leyenda
+
+```
+```{r}
+##**En la mayoría de los intervalos, las frecuencias observadas y las esperadas (líneas rojas) son muy cercanas en sus valores. Dadas las circunstancias podemos inferir que, en general, el modelo ha tenido un buen rendimiento al momento de predecir los eventos dentro de los intervalos de pago. Sin embargo, la proximidad de las líneas revela que, al mismo tiempo, el modelo comete errores y debe evaluar mejor muchos pagos.**
+```
+```{r}
+##--test de Hosmer-Lemeshow
+install.packages('ResourceSelection')
+library(ResourceSelection)
+hoslem.test(mod.glm1$y, fitted(mod.glm1))  # si el p-valor es inferior a 0.05 quedaria en duda el modelo                              
+
+```
+##** el pvalor de 0.75 nos indica que el modelo se ajusta bien a los datos observados,no hay discrepancia entre las frecuencias observadas y las esperadas**
+```{r}
+# Estimacion de un Odds Ratio
+############################################################
+##-- Variable categorica
+exp(mod.glm1$coef["foreignyes"])    # Los extranjeros tienen un oddsratio de 0.17 respecto a los no extranjeros. Es decir, las probabilidades de pagar son un 0.17 la de los nacionales 
+
+##-- Variable numerica
+exp(mod.glm1$coef["age"])           # Por cada anyo de mas de la persona se incrementa en un 2% (aprox) la probabilidad de que acabe pagando
+
+##--Intervalos de confianza
+IC <- confint(mod.glm1)             # Intervalos de  confianza para los coeficientes
+round(exp(IC),2)                    # Intervalos de confianza para los ORs redondeados a 2 decimales
+
+```
+
+
+```{r}
+#**al parecer, ser extranjero está fuertemente asociado con una menor probabilidad de pago, mientras que la edad tiene un efecto positivo, pero leve, en la probabilidad de cumplir con el pago.**
+```
+
+```{r}
+pr <- predict(mod.glm1,datos,type="response")
+pr
+
+##--Probabilidad maxima y minima
+pos.max <- which.max(pr)        # posicion del individuo con mayor probabilidad de pagar
+pr[pos.max]                     # probabilidad de dicho individuo 
+datos$y[pos.max]                # pago?
+
+pos.min <- which.min(pr)        # posicion del individuo con menor probabilidad de pagar
+pr[pos.min]                     # probabilidad de dicho individuo 
+datos$y[pos.min]                # pago?
+
+boxplot(pr~y,datos)
+```
+
+```{r}
+##**en conclusion, clientes que pagaron tienen una probabilidad de pago más alta, con densidad concentrada alrededor de 0.8 en adelante. Asimismo, los clientes que no pagaron, poseen una baja probabilidad de pago, con una mediana de alrededor 0.4. En pocas palabras, podemos decir que el modelo puede distinguir claramente a los dos grupos de personas con respecto a la probabilidad de pago, lo que implica un buen rendimiento predictivo.**
+```
+
+```{r}
+# Curva ROC y AUC
+############################################################
+Instalar libreria AUC
+install.packages('AUC')
+library(AUC)
+
+##-- Curva ROC y AUC
+pr <- predict(mod.glm1,type='response')
+roc.curve <- roc(pr,datos$y)
+plot(roc.curve)
+AUC::auc(roc.curve)
+```
+
+```{r}
+#**El área bajo la curva (AUC) es de 0.836, esto muestra un rendimiento decente del modelo al intentar predecir la diferencia entre las clases. Un AUC que está más cerca del 1 muestra que el modelo tiene una buena capacidad de clasificar correctamente. Aunque este modelo sea igualmente efectivo con un AUC de 0.836, aún no es perfecto.**
+```
+
+```{r}
+# Calibracion del modelo
+############################################################
+install.packages('PresenceAbsence')
+library(PresenceAbsence)
+df.calibra <- data.frame(plotID=1:nrow(datos), Observed = as.numeric(datos$y)-1  , Predicted1 = pr)
+calibration.plot(df.calibra, N.bins = 10,ylab='Observed probabilities')
+detach('package:PresenceAbsence')
+```
+
+```{r}
+##**La proximidad de los puntos a la línea diagonal indica que el modelo está bien calibrado:las probabilidades predichas se alinean con las observadas sin ser sistemáticamente altas o bajas. Esto muestra que el modelo no solo discrimina bien entre pagadores y no pagadores, sino que también asigna probabilidades precisas,lo cual es clave para una evaluación confiable del riesgo**
+```
+
+```{r}
+test <- read.table('bank0_test.txt',header=TRUE,sep=';', stringsAsFactors = TRUE)
+
+############################################################
+# Calcular predicciones y compararlas con valores reales
+############################################################
+pr <- predict(mod.glm1,test)   # probabilidades predichas
+boxplot(pr~test$y)
+```
+
+En comparacion con el modelo anterior la separacion entre los pagadores y no pagadores era más clara, con los que pagaron mostrando prabilidades mayores, en este de prueba aunque se ve la diferencia es menos  marcada.
+
+```{r}
+# Como son estas probabilidades en ambos grupos de respuesta
+roc.curve <- roc(pr,test$y)    # Calculo de la curva ROC
+plot(roc.curve)                # Dibujo de la curva ROC
+```
+```{r}
+AUC::auc(roc.curve)                 # AUC de la curva ROC
+```
+El modelo aun muestra una buena discriminacion, es menor que al de train pero es notorio, esto puede indicar que el modelo no generaliza bien los datos, esto es un factor a mejorar.
+
+
+```{r}
+##-- Sensibilidad y especificidad para un punto de corte concreto
+s <- AUC::sensitivity(pr,test$y)
+e <- AUC::specificity(pr,test$y)
+a <- AUC::accuracy(pr,test$y)
+df <- data.frame(cutpoints=s$cutoffs,sens=s$measure,esp=e$measure,acc=a$measure)
+View(round(df,3))
+
+##-- Escoger un punto de corte --> Matriz de confusion
+test$doy.credito <- ifelse(pr>0.5,'si','no')  # Doy credito a aquellos con un probabilidad predicha de pagar superior a 0.5
+with(test,table(doy.credito,y))
+with(test,round(100*prop.table(table(doy.credito,y),1),1))
+```
+```{r}
+#No Crédito (doy.credito-no)
+#correctamente clasificados como no (no pagarán): 45.9%
+#incorrectamente clasificados como no (pero sí pagarían): 54.1%
+#otorga crédito (doy.credito-si)
+#correctamente clasificados como sí (pagarán): 82.7%
+#incorrectamente clasificados como sí (pero no pagarían): 17.3%
+
+#**El modelo en el conjunto de prueba sigue teniendo efectividad para identificar a los pagadores, lo cual es bueno, pero tiene problemas al identificar a los que no pagaran** 
+```
